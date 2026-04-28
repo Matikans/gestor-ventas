@@ -74,57 +74,86 @@ export const resiveMessage = async(req, res) => {
                 });
             }
         }
-        else {
-            // FLUJO NORMAL CON IA
-            const historyArray = typeof session.chatHistory === 'string' 
-                ? JSON.parse(session.chatHistory || "[]") 
-                : (session.chatHistory || []);
+else {
+            // 1. LEER HISTORIAL (Aseguramos que sea un array)
+            let historyArray = [];
+            try {
+                historyArray = typeof session.chatHistory === 'string' 
+                    ? JSON.parse(session.chatHistory || "[]") 
+                    : (session.chatHistory || []);
+            } catch (e) {
+                console.error("Error parseando historial previo:", e);
+                historyArray = [];
+            }
+
             const productsContext = await getStoreContext(tenantId);
-            const aiReplay = await generateAIResponse(messageText, productsContext, apiConfig.tenant.businessName,tenantAddress, historyArray);
-            console.log(aiReplay)
+            const aiReplay = await generateAIResponse(messageText, productsContext, apiConfig.tenant.businessName, tenantAddress, historyArray);
+            
+            // LOG DE CONTROL
+            console.log("IA REPLY OBJECT:", JSON.stringify(aiReplay));
 
             finalMessage = aiReplay.reply || "Disculpame, che, se me trabó la neurona un segundo.";
 
-            if(aiReplay.intent === 'PURCHASE') {
-                const { items, total } = await CheckoutService.prepareOrderFromAI(tenantId, aiReplay.items);
-                const pendingOrderData = { items, total, status: "AWAITING_PAYMENT" };
+            // 2. LÓGICA DE COMPRA
+            if(aiReplay.intent === 'PURCHASE' && aiReplay.items?.length > 0) {
+                try {
+                    const { items, total } = await CheckoutService.prepareOrderFromAI(tenantId, aiReplay.items);
+                    const pendingOrderData = { items, total, status: "AWAITING_PAYMENT" };
 
-                if(aiReplay.deliveryMethod === 'DELIVERY') {
-                    console.log("Intentando guardar historial para:", customerPhone);
-                    await prisma.session.update({
-                        where: { customerPhone_tenantId: {customerPhone, tenantId} },
-                        data: {
-                            currentState: "AWAITING_ADDRESS",
-                            pendingOrder: pendingOrderData,
-                            deliveryMethod: "DELIVERY"
-                        }
-                    });
-                    finalMessage = "¡Genial! Pasame tu dirección exacta (Calle y altura) en Córdoba Capital para calcular el envío.";
-                } else if (aiReplay.deliveryMethod === 'PICKUP') {
-                    const checkout = await CheckoutService.createCheckout(tenantId, customerPhone, {
-                        ...pendingOrderData,
-                        deliveryMethod: "PICKUP"
-                    });
-                    finalMessage += `\n\nAquí tienes tu link de pago para retirar en el local: ${checkout.paymentLink}`;
-                    // Volvemos a CHAT porque ya generamos el link
-                    await prisma.session.update({
-                        where: { customerPhone_tenantId: {customerPhone, tenantId} },
-                        data: { currentState: "CHAT", deliveryMethod: "PICKUP" }
-                    });
+                    if(aiReplay.deliveryMethod === 'DELIVERY') {
+                        await prisma.session.update({
+                            where: { customerPhone_tenantId: {customerPhone, tenantId} },
+                            data: {
+                                currentState: "AWAITING_ADDRESS",
+                                pendingOrder: pendingOrderData,
+                                deliveryMethod: "DELIVERY"
+                            }
+                        });
+                        finalMessage = "¡Genial! Pasame tu dirección exacta (Calle y altura) en Córdoba Capital para calcular el envío.";
+                    } else {
+                        const checkout = await CheckoutService.createCheckout(tenantId, customerPhone, {
+                            ...pendingOrderData,
+                            deliveryMethod: "PICKUP"
+                        });
+                        finalMessage += `\n\nAquí tienes tu link de pago: ${checkout.paymentLink}`;
+                        await prisma.session.update({
+                            where: { customerPhone_tenantId: {customerPhone, tenantId} },
+                            data: { currentState: "CHAT", deliveryMethod: "PICKUP" }
+                        });
+                    }
+                } catch (purchaseError) {
+                    console.error("❌ Error en flujo PURCHASE:", purchaseError.message);
                 }
             }
 
-            // 3. GUARDAR TODO EN EL HISTORIAL (Aplica para CHAT y PURCHASE)
-            const newHistoryStep = [
-                ...historyArray, 
-                { role: 'user', content: messageText }, 
-                { role: 'model', content: finalMessage }
-            ];
-            console.log("Intentando guardar historial para:", customerPhone);
-            await prisma.session.update({
-                where: { customerPhone_tenantId: {customerPhone, tenantId} },
-                data: { chatHistory: JSON.stringify(newHistoryStep.slice(-10)) }
-            });
+            // 3. ACTUALIZAR HISTORIAL (FORZADO)
+            try {
+                const newHistoryStep = [
+                    ...historyArray, 
+                    { role: 'user', content: String(messageText) }, 
+                    { role: 'model', content: String(finalMessage) }
+                ];
+
+                const updated = await prisma.session.update({
+                    where: { 
+                        customerPhone_tenantId: { 
+                            customerPhone: String(customerPhone), 
+                            tenantId: String(tenantId) 
+                        } 
+                    },
+                    data: { 
+                        chatHistory: JSON.stringify(newHistoryStep.slice(-10)) 
+                    }
+                });
+
+                if (updated) {
+                    console.log("✅ DB UPDATE SUCCESS para:", customerPhone);
+                }
+            } catch (historyErr) {
+                console.error("❌ DB UPDATE FAIL:", historyErr.message);
+                // Si falla acá, imprimí el objeto que falló para ver si es un tema de tipos
+                console.error("Data intentada:", { customerPhone, tenantId });
+            }
         }
         // 3. ENVIAR MENSAJE FINAL
         await client.messages.create({

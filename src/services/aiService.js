@@ -116,35 +116,20 @@ export const generateAIResponse = async (userMessage, productsContext, businessN
         13. Si el cliente elige retirar en el local (PICKUP), confírmale la dirección: ${tenantAddress}.`;
 
 
-         try{
+try {
+    const text = result.response.text();
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    
+    if (start === -1 || end === -1) {
+        throw new Error("La IA no devolvió un JSON válido");
+    }
 
-            const chat = model.startChat({
-            history: cleanHistory,
-            generationConfig: { 
-                temperature: 0.1, // Baja temperatura = menos errores de formato
-                responseMimeType: "application/json" 
-            }
-            });
-
-
-            const result = await chat.sendMessage(`INSTRUCCIONES: ${prompt}\n\nMENSAJE USUARIO: ${userMessage}`)
-
-
-            const text = result.response.text();
-
-
-            return JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
-
-
-        } catch (error) {
-
-
-            console.error('Error generating AI response:', error);
-
-
-            return "Lo siento, tuve un problema para procesar tu solicitud. Por favor, intenta de nuevo más tarde.";
-
-
-    }  
+    const jsonString = text.substring(start, end + 1);
+    return JSON.parse(jsonString);
+} catch (error) {
+    console.error('Error parseando JSON de IA:', error);
+    return { intent: 'CHAT', reply: "Disculpame, che, se me hizo un lío. ¿Me repetís?" };
+}
 
 }
