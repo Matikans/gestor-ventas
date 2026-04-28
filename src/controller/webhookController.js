@@ -65,25 +65,25 @@ export const resiveMessage = async(req, res) => {
                     deliveryMethod: "DELIVERY"
                 });
                 finalMessage = `¡Excelente! Ubiqué la dirección: ${addressCheck.formattedAddress}.\n\nAquí tenés tu link de pago (incluye envío): ${checkout.paymentLink}`;
+                await prisma.session.update({
+                    where: { customerPhone_tenantId: {customerPhone, tenantId} },
+                    data: {
+                        currentState: "CHAT",
+                        deliveryMethod: "DELIVERY"
+                    }
+                });
             }
         }
         else {
             // FLUJO NORMAL CON IA
-            const history = session.chatHistory || "[]";
+            const historyArray = typeof session.chatHistory === 'string' 
+                ? JSON.parse(session.chatHistory || "[]") 
+                : (session.chatHistory || []);
             const productsContext = await getStoreContext(tenantId);
-            const aiReplay = await generateAIResponse(messageText, productsContext, apiConfig.tenant.businessName,tenantAddress, history);
+            const aiReplay = await generateAIResponse(messageText, productsContext, apiConfig.tenant.businessName,tenantAddress, historyArray);
             console.log(aiReplay)
 
             finalMessage = aiReplay.reply || "Disculpame, che, se me trabó la neurona un segundo.";
-
-            if(aiReplay.intent === 'CHAT'){
-                await client.messages.create({
-                    from:`whatsapp:${cleanTwilioNumber}`,
-                    to:`whatsapp:${customerPhone}`,
-                    body: finalMessage
-                });
-                return;
-            }
 
             if(aiReplay.intent === 'PURCHASE') {
                 const { items, total } = await CheckoutService.prepareOrderFromAI(tenantId, aiReplay.items);
@@ -99,28 +99,30 @@ export const resiveMessage = async(req, res) => {
                         }
                     });
                     finalMessage = "¡Genial! Pasame tu dirección exacta (Calle y altura) en Córdoba Capital para calcular el envío.";
-                } else {
+                } else if (aiReplay.deliveryMethod === 'PICKUP') {
                     const checkout = await CheckoutService.createCheckout(tenantId, customerPhone, {
                         ...pendingOrderData,
                         deliveryMethod: "PICKUP"
                     });
-                    finalMessage += `\n\nAquí tienes tu link de pago: ${checkout.paymentLink}`;
+                    finalMessage += `\n\nAquí tienes tu link de pago para retirar en el local: ${checkout.paymentLink}`;
+                    // Volvemos a CHAT porque ya generamos el link
                     await prisma.session.update({
                         where: { customerPhone_tenantId: {customerPhone, tenantId} },
-                        data: {
-                            currentState: "CHAT",
-                            deliveryMethod: "PICKUP"
-                            // No limpiamos pendingOrder aquí para tener registro hasta que pague
-                        }
+                        data: { currentState: "CHAT", deliveryMethod: "PICKUP" }
                     });
                 }
-
             }
-            // Actualizar historial
-            const updatedHistory = [...history, { role: 'user', content: messageText }, { role: 'assistant', content: finalMessage }].slice(-20);
+
+            // 3. GUARDAR TODO EN EL HISTORIAL (Aplica para CHAT y PURCHASE)
+            const newHistoryStep = [
+                ...historyArray, 
+                { role: 'user', content: messageText }, 
+                { role: 'model', content: finalMessage }
+            ];
+
             await prisma.session.update({
                 where: { customerPhone_tenantId: {customerPhone, tenantId} },
-                data: { chatHistory: JSON.stringify(updatedHistory) }
+                data: { chatHistory: JSON.stringify(newHistoryStep.slice(-10)) }
             });
         }
         // 3. ENVIAR MENSAJE FINAL
