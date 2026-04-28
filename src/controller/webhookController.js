@@ -90,6 +90,7 @@ export const resiveMessage = async(req, res) => {
                 const pendingOrderData = { items, total, status: "AWAITING_PAYMENT" };
 
                 if(aiReplay.deliveryMethod === 'DELIVERY') {
+                    console.log("Intentando guardar historial para:", customerPhone);
                     await prisma.session.update({
                         where: { customerPhone_tenantId: {customerPhone, tenantId} },
                         data: {
@@ -119,7 +120,7 @@ export const resiveMessage = async(req, res) => {
                 { role: 'user', content: messageText }, 
                 { role: 'model', content: finalMessage }
             ];
-
+            console.log("Intentando guardar historial para:", customerPhone);
             await prisma.session.update({
                 where: { customerPhone_tenantId: {customerPhone, tenantId} },
                 data: { chatHistory: JSON.stringify(newHistoryStep.slice(-10)) }
