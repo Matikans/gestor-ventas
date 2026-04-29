@@ -8,6 +8,7 @@ export class CheckoutService {
         const validatedItems = [];
         let total = 0;
 
+        console.log("Vamo a ve:", tenantId);
         for (const item of aiItems) {
             let dbItem = await prisma.product.findUnique({ where: { id: item.id, tenantId } });
             if (!dbItem) {
@@ -37,7 +38,7 @@ export class CheckoutService {
     }
     static async checkStock(tenantId, cartItems) {
         for (const item of cartItems) {
-            const combo = await prisma.combo.findUnique({ where: { id: item.id }, include: { items: { include: { product: true } } } });
+            const combo = await prisma.combo.findUnique({ where: {id_tenantId: { id: item.id, tenantId }}, include: { items: { include: { product: true } } } });
             if(combo){
                 for (const comboItem of combo.items) {
                     const totalNeeded = comboItem.quantity * item.quantity;
@@ -46,7 +47,7 @@ export class CheckoutService {
                     }
                 }
             }else {
-                const product = await prisma.product.findUnique({ where: { id: item.id } });
+                const product = await prisma.product.findUnique({ where: { tenantId, id: item.id }});
                 if (!product || product.stock < item.quantity) {
                     throw new Error(`Not enough stock for product ${product ? product.name : item.id}`);
                 }

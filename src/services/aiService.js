@@ -15,8 +15,6 @@ export const getStoreContext = async (tenantId) =>{
         where: {tenantId, isActive: true }
 
     });
-
-
     const promos = await prisma.combo.findMany({
 
         where: {tenantId, isActive: true }
@@ -117,19 +115,25 @@ export const generateAIResponse = async (userMessage, productsContext, businessN
 
 
 try {
-    const text = result.response.text();
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    
-    if (start === -1 || end === -1) {
-        throw new Error("La IA no devolvió un JSON válido");
-    }
+        const chat = model.startChat({
+            history: cleanHistory,
+        });
 
-    const jsonString = text.substring(start, end + 1);
-    return JSON.parse(jsonString);
-} catch (error) {
-    console.error('Error parseando JSON de IA:', error);
-    return { intent: 'CHAT', reply: "Disculpame, che, se me hizo un lío. ¿Me repetís?" };
-}
+        const result = await chat.sendMessage(prompt + `\n\nMensaje del usuario: ${userMessage}`);
+        const text = result.response.text();
+        
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        
+        if (start === -1 || end === -1) {
+            throw new Error("La IA no devolvió un JSON válido");
+        }
+
+        const jsonString = text.substring(start, end + 1);
+        return JSON.parse(jsonString);
+    } catch (error) {
+        console.error('Error parseando JSON de IA:', error);
+        return { intent: 'CHAT', reply: "Disculpame, che, se me hizo un lío. ¿Me repetís?" };
+    }
 
 }
