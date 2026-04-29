@@ -85,7 +85,7 @@ else {
                 console.error("Error parseando historial previo:", e);
                 historyArray = [];
             }
-
+            console.log(tenantId)
             const productsContext = await getStoreContext(tenantId);
             const aiReplay = await generateAIResponse(messageText, productsContext, apiConfig.tenant.businessName, tenantAddress, historyArray);
             
