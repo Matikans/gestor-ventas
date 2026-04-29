@@ -7,12 +7,6 @@ import promoRoutes from "./routes/promoRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import businessRoutes from "./routes/businessRoutes.js";
 import webRoutes from "./routes/webRoutes.js";
-import { syncProductsFromSheet } from './services/syncService.js';
-
-// Sincronización inicial al arrancar el servidor
-syncProductsFromSheet();
-
-setInterval(syncProductsFromSheet, 10 * 60 * 1000); // Sincroniza cada 10 minutos
 
 const app = express();
 

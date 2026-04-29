@@ -94,6 +94,10 @@ else {
 
             finalMessage = aiReplay.reply || "Disculpame, che, se me trabó la neurona un segundo.";
 
+            console.log("--- DEBUG HISTORIAL ---");
+            console.log("1. Intentando guardar para:", customerPhone);
+            console.log("2. TenantId:", tenantId);
+
             // 2. LÓGICA DE COMPRA
             if(aiReplay.intent === 'PURCHASE' && aiReplay.items?.length > 0) {
                 try {
