@@ -38,7 +38,7 @@ export class CheckoutService {
     }
     static async checkStock(tenantId, cartItems) {
         for (const item of cartItems) {
-            const combo = await prisma.combo.findUnique({ where: {id_tenantId: { id: item.id, tenantId }}, include: { items: { include: { product: true } } } });
+            const combo = await prisma.combo.findUnique({ where: { id: item.id }, include: { items: { include: { product: true } } } });
             if(combo){
                 for (const comboItem of combo.items) {
                     const totalNeeded = comboItem.quantity * item.quantity;
@@ -47,7 +47,7 @@ export class CheckoutService {
                     }
                 }
             }else {
-                const product = await prisma.product.findUnique({ where: { tenantId, id: item.id }});
+                const product = await prisma.product.findUnique({ where: { id: item.id }});
                 if (!product || product.stock < item.quantity) {
                     throw new Error(`Not enough stock for product ${product ? product.name : item.id}`);
                 }
@@ -64,7 +64,6 @@ export class CheckoutService {
         if(!cart.items || cart.items.length === 0) throw new Error("Cart is empty");
         const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
         const config = await prisma.apiConfig.findUnique({where: { tenantId }, include: {tenant: true }});
-        console.log(cart)
         
         if (!config?.paymentPrivateKey) throw new Error("Payment provider not configured for this tenant");
         

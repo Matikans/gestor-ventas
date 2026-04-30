@@ -11,9 +11,11 @@ export const validateAddress = async (address) => {
         if (response.data.length > 0) {
             const result = response.data[0];
             
-            // Verificamos que sea de la ciudad de Córdoba
-            const isCordoba = result.address.city === "Córdoba" || 
-                             result.address.county === "Capital";
+            // Verificación más robusta: buscamos "Córdoba" en ciudad, municipio o estado
+            const addr = result.address;
+            const isCordoba = 
+                (addr.city === "Córdoba" || addr.town === "Córdoba" || addr.suburb === "Córdoba") ||
+                (addr.state === "Córdoba" && (addr.city === "Capital" || addr.county === "Capital"));
 
             if (!isCordoba) {
                 return { isValid: false, error: "Solo entregamos en Córdoba Capital" };

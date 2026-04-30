@@ -29,6 +29,7 @@ export const handleWebhook = async (req, res) => {
     try {
         const { tenantId } = req.query;
         const webhookData = req.body || {};
+        console.log(`Webhook recibido para el tenant: ${tenantId}`);
 
         const id = webhookData.data?.id || webhookData.id || webhookData.resource?.split('/').pop();
         const type = webhookData.type || webhookData.topic;

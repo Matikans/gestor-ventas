@@ -1,182 +1,160 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-// 1. El Dueño del Negocio (Tenant)
 model Tenant {
-  id           String   @id @default(uuid())
-  businessName String
-  address      String @default("Direccion no configurada")
-  email        String? @unique
-  planType     String   @default("free") // free, premium
-  commissionPorcent Decimal @default(1.00) @db.Decimal(10, 2)
-  deliveryPrice Decimal @default(0.00) @db.Decimal(10, 2)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-
-  suscriptionStatus String @default("ACTIVE")
-  nextBillingDate DateTime?
-  daysOverdue Int @default(0)
-
-  // Relaciones
-  apiConfig    ApiConfig?
-  products     Product[]
-  combos       Combo[]
-  sessions     Session[]
-  users        User[]
-  orders       Order[]
-  businessHours BusinessHour[]
-  specialDates SpecialDate[]
-  invoices Invoice[]
+  id                String         @id @default(uuid())
+  businessName      String
+  planType          String         @default("free")
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  commissionPorcent Decimal        @default(1.00) @db.Decimal(10, 2)
+  deliveryPrice     Decimal        @default(0.00) @db.Decimal(10, 2)
+  address           String         @default("Direccion no configurada")
+  daysOverdue       Int            @default(0)
+  email             String?        @unique
+  nextBillingDate   DateTime?
+  suscriptionStatus String         @default("ACTIVE")
+  apiConfig         ApiConfig?
+  businessHours     BusinessHour[]
+  combos            Combo[]
+  invoices          Invoice[]
+  orders            Order[]
+  products          Product[]
+  sessions          Session[]
+  specialDates      SpecialDate[]
+  users             User[]
 }
 
-// 2. Configuración de APIs (Sensible)
 model ApiConfig {
-  tenantId          String @id
-  tenant            Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  whatsappToken     String // Encriptado preferentemente
+  tenantId          String  @id
+  whatsappToken     String
   whatsappPhoneId   String
   paymentPrivateKey String?
-  refreshToken      String?
-  mpUserId          String?
   webhookSecret     String?
+  mpUserId          String?
+  refreshToken      String?
+  tenant            Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
-// 3. Productos individuales
 model Product {
-  id          String   @id @default(uuid())
+  id          String      @id @default(uuid())
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String
   description String?
-  price       Decimal  @db.Decimal(10, 2)
-  stock       Int      @default(0)
-  isActive    Boolean  @default(true)
-
-  // Relación con los items de los combos
+  price       Decimal     @db.Decimal(10, 2)
+  stock       Int         @default(0)
+  isActive    Boolean     @default(true)
   comboItems  ComboItem[]
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
-// 4. Combos y Ofertas (2x1, etc)
 model Combo {
-  id            String   @id @default(uuid())
+  id            String      @id @default(uuid())
   tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name          String
-  type          String   // "2X1", "COMBO_FIXED", "PERCENTAGE"
-  discountValue Decimal? @db.Decimal(10, 2)
-  isActive      Boolean  @default(true)
-
+  type          String
+  discountValue Decimal?    @db.Decimal(10, 2)
+  isActive      Boolean     @default(true)
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   items         ComboItem[]
 }
 
-// 5. Tabla intermedia para los productos dentro de un combo
 model ComboItem {
   comboId   String
   productId String
   quantity  Int     @default(1)
-
   combo     Combo   @relation(fields: [comboId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@id([comboId, productId]) // Llave primaria compuesta
+  @@id([comboId, productId])
 }
 
-// 6. Sesiones de Chat (El cerebro de la IA)
 model Session {
-  customerPhone  String
-  tenantId       String
-  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  currentState   String   @default("GREETING")
-  isBotActive    Boolean  @default(true)
-  fallbackCount  Int      @default(0)
-
-  deliveryMethod DeliveryMethod @default(PICKUP)
-  deliveryAddress String @default("")
-  
-  chatHistory    Json     @default("[]") // Historial para la IA
-  pendingOrder   Json     @default("{}") // Borrador del carrito
-  
-  lastInteraction DateTime @default(now()) @updatedAt
+  customerPhone   String
+  tenantId        String
+  currentState    String         @default("GREETING")
+  isBotActive     Boolean        @default(true)
+  fallbackCount   Int            @default(0)
+  chatHistory     Json           @default("[]")
+  pendingOrder    Json           @default("{}")
+  lastInteraction DateTime       @default(now()) @updatedAt
+  deliveryAddress String         @default("")
+  deliveryMethod  DeliveryMethod @default(PICKUP)
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@id([customerPhone, tenantId])
 }
 
 model User {
-  id        String   @id @default(uuid()) // <--- Agregamos esto
+  id        String   @id @default(uuid())
   email     String   @unique
   password  String
   role      String   @default("admin")
   tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-}
-
-enum DeliveryMethod {
-  PICKUP
-  DELIVERY
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Order {
-  id          String   @id @default(uuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  orderNumber  Int     @default(autoincrement())
-  deliveryMethod DeliveryMethod @default(PICKUP)
-  deliveryAddress String?
-  customerName String?
-  customerPhone String
-  items       Json     // Lista de productos y combos
-  totalAmount Decimal  @db.Decimal(10, 2)
-  deliveryAmount Decimal @default(0.00) @db.Decimal(10, 2)
-  commissionAmount Decimal? @db.Decimal(10, 2)
-  status      String   @default("PENDING") // PENDING, CONFIRMED,
-  paymentProvider String?  // Stripe, PayPal, etc.
-  paymentId    String?  // ID de la transacción en el proveedor de pago
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+  id               String         @id @default(uuid())
+  tenantId         String
+  customerPhone    String
+  items            Json
+  totalAmount      Decimal        @db.Decimal(10, 2)
+  status           String         @default("PENDING")
+  paymentProvider  String?
+  paymentId        String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @default(now()) @updatedAt
+  commissionAmount Decimal?       @db.Decimal(10, 2)
+  customerName     String?
+  deliveryAddress  String?
+  deliveryAmount   Decimal        @default(0.00) @db.Decimal(10, 2)
+  deliveryMethod   DeliveryMethod @default(PICKUP)
+  orderNumber      Int            @default(autoincrement())
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model BusinessHour {
-  id        String   @id @default(uuid())
-  dayOfWeek Int      // 0 para Domingo, 1 para Lunes, etc.
-  openTime  String   // Ejemplo: "09:00"
-  closeTime String   // Ejemplo: "23:00"
+  id        String @id @default(uuid())
+  dayOfWeek Int
+  openTime  String
+  closeTime String
   tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
 
-  @@unique([tenantId, dayOfWeek]) // Evita horarios duplicados para el mismo día
+  @@unique([tenantId, dayOfWeek])
 }
 
 model SpecialDate {
-  id          String   @id @default(uuid())
-  date        DateTime // La fecha específica (ej: 2024-12-25)
-  isOpen      Boolean  @default(false) // Permite marcar feriados que SÍ abren
-  openTime    String?  // Opcional, por si abre en horario especial
-  closeTime   String?
-  comment     String?  // Ej: "Feriado Navideño" o "Cerrado por reformas"
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  id        String   @id @default(uuid())
+  date      DateTime
+  isOpen    Boolean  @default(false)
+  openTime  String?
+  closeTime String?
+  comment   String?
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
 
   @@unique([tenantId, date])
 }
 
 model Invoice {
-  id          String   @id @default(uuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  amount      Decimal  @db.Decimal(10, 2)
-  dueDate     DateTime
-  status      String   @default("PENDING") // PENDING, PAID,
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  tenantId  String
+  amount    Decimal  @db.Decimal(10, 2)
+  dueDate   DateTime
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+enum DeliveryMethod {
+  PICKUP
+  DELIVERY
 }

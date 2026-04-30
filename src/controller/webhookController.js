@@ -9,18 +9,19 @@ export const verifyWebhook = (req, res) => {
     res.status(200).send('twilio webhook verified');
 }
 
-export const resiveMessage = async(req, res) => {
+export const receiveMessage = async(req, res) => {
     res.status(200).send('<Response></Response>');
     try {
         const {Body: messageText, From:customerPhoneRaw, To:twilioNumber} = req.body;
         if (!messageText) return;
 
         const customerPhone = customerPhoneRaw.replace('whatsapp:', '');
-        const cleanTwilioNumber = twilioNumber.replace('whatsapp:', '').replace('+', '').trim();
-        console.log(customerPhone)
+        const cleanTwilioNumber = twilioNumber.replace('whatsapp:', '').trim();
+
+        console.log(cleanTwilioNumber.replace('+', ''), customerPhone);
 
         const apiConfig = await prisma.apiConfig.findFirst({
-            where: {whatsappPhoneId: cleanTwilioNumber},
+            where: {whatsappPhoneId: cleanTwilioNumber.replace('+', '')},
             include: {tenant: true}
         });
 
@@ -33,7 +34,7 @@ export const resiveMessage = async(req, res) => {
         if(!status.isOpen){
             await client.messages.create({
                 body:`¡Hola! 👋 Gracias por escribir a ${apiConfig.tenant.businessName}. En este momento estamos cerrados. ${status.message}.`,
-                from:`whatsapp:${cleanTwilioNumber}`, to:`whatsapp:${customerPhone}`
+                from: twilioNumber, to: customerPhoneRaw
             });
             return;
         }
@@ -44,6 +45,17 @@ export const resiveMessage = async(req, res) => {
             update: { lastInteraction: new Date() },
             create: { customerPhone, tenantId, currentState: "CHAT" }
         });
+
+        // Parseamos el historial una sola vez al inicio
+        let historyArray = [];
+        try {
+            historyArray = typeof session.chatHistory === 'string' 
+                ? JSON.parse(session.chatHistory || "[]") 
+                : (session.chatHistory || []);
+        } catch (e) {
+            console.error("Error parseando historial:", e);
+        }
+
         let finalMessage = "";
         // 2. LÓGICA DE ESTADOS
         if(session.currentState === "AWAITING_ADDRESS") {
@@ -51,52 +63,29 @@ export const resiveMessage = async(req, res) => {
             if(!addressCheck.isValid) {
                 finalMessage = `Ups, no encuentro esa dirección en Córdoba: ${addressCheck.error}. ¿Me la pasás de nuevo?`;
             } else {
-                session = await prisma.session.update({
-                    where: { customerPhone_tenantId: {customerPhone, tenantId} },
-                    data: {
-                        deliveryAddress: addressCheck.formattedAddress,
-                        currentState: "CHAT"
-                    }
-                });
-
                 const pendingOrder = session.pendingOrder;
                 const checkout = await CheckoutService.createCheckout(tenantId, customerPhone, {
                     ...pendingOrder,
                     deliveryMethod: "DELIVERY"
                 });
-                finalMessage = `¡Excelente! Ubiqué la dirección: ${addressCheck.formattedAddress}.\n\nAquí tenés tu link de pago (incluye envío): ${checkout.paymentLink}`;
+
+                finalMessage = `¡Excelente! Ubiqué la dirección: ${addressCheck.formattedAddress}.\n\nAquí tenés tu link de pago: ${checkout.paymentLink}`;
+                
                 await prisma.session.update({
                     where: { customerPhone_tenantId: {customerPhone, tenantId} },
                     data: {
+                        deliveryAddress: addressCheck.formattedAddress,
                         currentState: "CHAT",
                         deliveryMethod: "DELIVERY"
                     }
                 });
             }
         }
-else {
-            // 1. LEER HISTORIAL (Aseguramos que sea un array)
-            let historyArray = [];
-            try {
-                historyArray = typeof session.chatHistory === 'string' 
-                    ? JSON.parse(session.chatHistory || "[]") 
-                    : (session.chatHistory || []);
-            } catch (e) {
-                console.error("Error parseando historial previo:", e);
-                historyArray = [];
-            }
-            console.log(tenantId)
+        else {
             const productsContext = await getStoreContext(tenantId);
             const aiReplay = await generateAIResponse(messageText, productsContext, apiConfig.tenant.businessName, tenantAddress, historyArray);
             
-            // LOG DE CONTROL
-            console.log("IA REPLY OBJECT:", JSON.stringify(aiReplay));
-
             finalMessage = aiReplay.reply || "Disculpame, che, se me trabó la neurona un segundo.";
-
-            console.log("--- DEBUG HISTORIAL ---");
-            console.log("1. Intentando guardar para:", customerPhone);
-            console.log("2. TenantId:", tenantId);
 
             // 2. LÓGICA DE COMPRA
             if(aiReplay.intent === 'PURCHASE' && aiReplay.items?.length > 0) {
@@ -129,40 +118,28 @@ else {
                     console.error("❌ Error en flujo PURCHASE:", purchaseError.message);
                 }
             }
-
-            // 3. ACTUALIZAR HISTORIAL (FORZADO)
-            try {
-                const newHistoryStep = [
-                    ...historyArray, 
-                    { role: 'user', content: String(messageText) }, 
-                    { role: 'model', content: String(finalMessage) }
-                ];
-
-                const updated = await prisma.session.update({
-                    where: { 
-                        customerPhone_tenantId: { 
-                            customerPhone: String(customerPhone), 
-                            tenantId: String(tenantId) 
-                        } 
-                    },
-                    data: { 
-                        chatHistory: JSON.stringify(newHistoryStep.slice(-10)) 
-                    }
-                });
-
-                if (updated) {
-                    console.log("✅ DB UPDATE SUCCESS para:", customerPhone);
-                }
-            } catch (historyErr) {
-                console.error("❌ DB UPDATE FAIL:", historyErr.message);
-                // Si falla acá, imprimí el objeto que falló para ver si es un tema de tipos
-                console.error("Data intentada:", { customerPhone, tenantId });
-            }
         }
+
+        // 3. ACTUALIZAR HISTORIAL UNIVERSAL
+        try {
+            const newHistoryStep = [
+                ...historyArray, 
+                { role: 'user', content: String(messageText) }, 
+                { role: 'model', content: String(finalMessage) }
+            ].slice(-10);
+
+            await prisma.session.update({
+                where: { customerPhone_tenantId: { customerPhone, tenantId } },
+                data: { chatHistory: JSON.stringify(newHistoryStep) }
+            });
+        } catch (historyErr) {
+            console.error("❌ Error actualizando historial:", historyErr.message);
+        }
+
         // 3. ENVIAR MENSAJE FINAL
         await client.messages.create({
-            from:`whatsapp:${cleanTwilioNumber}`,
-            to:`whatsapp:${customerPhone}`,
+            from: twilioNumber,
+            to: customerPhoneRaw,
             body: finalMessage,
         });
     } catch(error) {
