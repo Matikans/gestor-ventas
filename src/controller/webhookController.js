@@ -21,7 +21,7 @@ export const receiveMessage = async(req, res) => {
 }
 
 const processAiLogic = async (body) => {
-    const {Body: messageText, From:customerPhoneRaw, To:twilioNumber} = req.body;
+    const {Body: messageText, From:customerPhoneRaw, To:twilioNumber} = body;
     if (!messageText) return;
     
     const customerPhone = customerPhoneRaw.replace('whatsapp:', '');
@@ -133,15 +133,17 @@ const processAiLogic = async (body) => {
     
     // 3. ACTUALIZAR HISTORIAL UNIVERSAL
     try {
+        const userMsg = String(messageText || "").trim();
+        const aiMsg = String(finalMessage || "").trim();
         const newHistoryStep = [
             ...historyArray, 
-            { role: 'user', content: String(messageText) }, 
-            { role: 'model', content: String(finalMessage) }
+            { role: 'user', content: userMsg }, 
+            { role: 'model', content: aiMsg }
         ].slice(-10);
     
         await prisma.session.update({
             where: { customerPhone_tenantId: { customerPhone, tenantId } },
-            data: { chatHistory: JSON.stringify(newHistoryStep) }
+            data: { chatHistory: JSON(newHistoryStep) }
         });
     } catch (historyErr) {
         console.error("❌ Error actualizando historial:", historyErr.message);
