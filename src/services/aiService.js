@@ -54,6 +54,7 @@ ${promoList}`;
 
 
 export const generateAIResponse = async (userMessage, productsContext, businessName, tenantAddress, history = []) => {
+    console.log("Generando respuesta de IA con el siguiente modelo:", model);
     let historyArray = [];
     try {
         if (typeof history === 'string') {
