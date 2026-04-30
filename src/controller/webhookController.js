@@ -10,7 +10,6 @@ export const verifyWebhook = (req, res) => {
 }
 
 export const receiveMessage = async(req, res) => {
-    res.status(200).send('<Response></Response>');
     try {
         const {Body: messageText, From:customerPhoneRaw, To:twilioNumber} = req.body;
         if (!messageText) return;
@@ -142,8 +141,12 @@ export const receiveMessage = async(req, res) => {
             to: customerPhoneRaw,
             body: finalMessage,
         });
+        return res.status(200).send('<Response></Response>');
     } catch(error) {
         console.error('Error en el Webhook:', error.message);
+        if (!res.headersSent) {
+            res.status(200).send('<Response></Response>');
+        }
     }
 
 }
