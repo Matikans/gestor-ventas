@@ -138,7 +138,7 @@ const processAiLogic = async (body) => {
         const newHistoryStep = [
             ...historyArray, 
             { role: 'user', content: userMsg }, 
-            { role: 'model', content: aiMsg }
+            { role: 'assistant', content: aiMsg }
         ].slice(-10);
     
         await prisma.session.update({
