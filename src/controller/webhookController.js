@@ -55,6 +55,8 @@ export const receiveMessage = async(req, res) => {
             console.error("Error parseando historial:", e);
         }
 
+        console.log("Historial actual:", historyArray);
+
         let finalMessage = "";
         // 2. LÓGICA DE ESTADOS
         if(session.currentState === "AWAITING_ADDRESS") {
