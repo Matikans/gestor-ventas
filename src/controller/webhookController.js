@@ -14,9 +14,6 @@ export const receiveMessage = async(req, res) => {
     res.status(200).send('<Response></Response>'); // Respuesta inmediata a Twilio para evitar reintentos
 
     processAiLogic(req.body)
-}
-
-const processAiLogic = async (body) => {
     const {Body: messageText, From:customerPhoneRaw, To:twilioNumber} = body;
     if (!messageText) return;
     
@@ -152,4 +149,7 @@ const processAiLogic = async (body) => {
         body: finalMessage,
     });
     console.log("Mensaje enviado al cliente:", finalMessage);
+}
+
+const processAiLogic = async (body) => {
 }
