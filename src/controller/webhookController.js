@@ -13,11 +13,7 @@ export const receiveMessage = async(req, res) => {
     console.log("D:", req.body);
     res.status(200).send('<Response></Response>'); // Respuesta inmediata a Twilio para evitar reintentos
 
-    processAiLogic(req.body).catch(error => {
-        console.error('Error en el Webhook:', error.message);
-        if (!res.headersSent) {
-        res.status(200).send('<Response></Response>');}
-    })
+    processAiLogic(req.body)
 }
 
 const processAiLogic = async (body) => {
