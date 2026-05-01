@@ -10,7 +10,7 @@ export const verifyWebhook = (req, res) => {
 }
 
 export const receiveMessage = async(req, res) => {
-    console.log("Webhook recibido con body:", req.body);
+    console.log("D:", req.body);
     res.status(200).send('<Response></Response>'); // Respuesta inmediata a Twilio para evitar reintentos
 
     processAiLogic(req.body).catch(error => {
