@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
 "scripts": {
-    "start": "node src/server.js",
+    "start": "npx prisma generate && node src/server.js",
     "build": "npx prisma generate",
     "dev:back": "nodemon src/server.js",
     "dev:front": "npm run dev --prefix web",
