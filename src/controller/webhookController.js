@@ -14,7 +14,7 @@ export const receiveMessage = async(req, res) => {
     res.status(200).send('<Response></Response>'); // Respuesta inmediata a Twilio para evitar reintentos
 
     processAiLogic(req.body)
-    const {Body: messageText, From:customerPhoneRaw, To:twilioNumber} = body;
+    const {Body: messageText, From:customerPhoneRaw, To:twilioNumber} = req.body;
     if (!messageText) return;
     
     const customerPhone = customerPhoneRaw.replace('whatsapp:', '');
