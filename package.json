@@ -9,7 +9,8 @@
     "dev:back": "nodemon src/server.js",
     "dev:front": "npm run dev --prefix web",
     "dev": "concurrently \"npm run dev:back\" \"npm run dev:front\"",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",
