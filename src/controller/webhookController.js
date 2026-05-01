@@ -136,7 +136,7 @@ export const receiveMessage = async(req, res) => {
     
         await prisma.session.update({
             where: { customerPhone_tenantId: { customerPhone, tenantId } },
-            data: { chatHistory: JSON(newHistoryStep) }
+            data: { chatHistory: JSON.stringify(newHistoryStep) }
         });
     } catch (historyErr) {
         console.error("❌ Error actualizando historial:", historyErr.message);
