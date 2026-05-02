@@ -8,7 +8,7 @@ import { validateAddress } from "../services/locationService.js";
 export const verifyWebhook = (req, res) => {
     res.status(200).send('twilio webhook verified');
 }
-export const receiveMessage = async(req, res) => {
+export const receiveMessage = (req, res) => {
     res.status(200).send('<Response></Response>'); // Respuesta inmediata a Twilio para evitar reintentos
     processAiLogic(req.body).catch(error => {
         console.error('Error en el Webhook:', error.message);
@@ -24,7 +24,6 @@ const processAiLogic = async (body) => {
     const cleanTwilioNumber = twilioNumber.replace('whatsapp:+', '').trim();
     
     console.log("Numero Limpio:",typeof(cleanTwilioNumber));
-    console.log("aca funciona: ", await prisma.apiConfig.findFirst({where: { whatsappPhoneId: cleanTwilioNumber }}));
     const apiConfig = await prisma.apiConfig.findFirst({ where: {whatsappPhoneId: cleanTwilioNumber}, include: {tenant: true}});
     console.log("API Config encontrada:", apiConfig);
     
