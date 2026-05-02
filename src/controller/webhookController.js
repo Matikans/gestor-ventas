@@ -26,14 +26,12 @@ const processAiLogic = async (body) => {
     const customerPhone = customerPhoneRaw.replace('whatsapp:', '');
     const cleanTwilioNumber = twilioNumber.replace('whatsapp:+', '').trim();
     
-    console.log("Numero Limpio:",cleanTwilioNumber);
-    
-    /*const api = await prisma.apiConfig.findFirst({
-        where: {whatsappPhoneId: cleanTwilioNumber.replace('+', '')},
-        include: {tenant: true}
-    });*/
+    console.log("Numero Limpio:",typeof(cleanTwilioNumber));
+
     const apiConfig = await prisma.apiConfig.findFirst({
-        where: {whatsappPhoneId: "14155238886"},
+        where: {
+            whatsappPhoneId: cleanTwilioNumber
+        },
         include: {tenant: true}
     });
     
