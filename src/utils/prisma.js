@@ -12,6 +12,6 @@ const adapter = new PrismaPg({pool});
 
 const prisma = new PrismaClient({ adapter });
 
-console.log("Conexión establecida");
+console.log("Conexión establecida", process.env.DATABASE_URL);
 
 export default prisma;
