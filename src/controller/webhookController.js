@@ -1,4 +1,4 @@
-import prisma from "../utils/prisma.js";
+import {prisma } from "../utils/prisma.js";
 import { getStoreContext, generateAIResponse } from "../services/aiService.js";
 import twilio from "twilio";
 import { CheckoutService } from "../services/checkoutService.js";
