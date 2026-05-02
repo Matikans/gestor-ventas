@@ -27,7 +27,7 @@ const processAiLogic = async (body) => {
     
     console.log("Numero Limpio:",typeof(cleanTwilioNumber));
     console.log("aca funciona: ", prisma.apiConfig.findFirst({where: { whatsappPhoneId: cleanTwilioNumber }}));
-    const apiConfig = await prisma.apiConfig.findFirst({ where: {whatsappPhoneId: cleanTwilioNumber}, include: {tenant: true}});
+    const apiConfig = prisma.apiConfig.findFirst({ where: {whatsappPhoneId: cleanTwilioNumber}, include: {tenant: true}});
     
     if(!apiConfig || !apiConfig.tenant) return;
     const tenantId = apiConfig.tenantId;
