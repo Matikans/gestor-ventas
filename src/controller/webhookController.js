@@ -22,18 +22,12 @@ export const receiveMessage = async(req, res) => {
 const processAiLogic = async (body) => {
     const {Body: messageText, From:customerPhoneRaw, To:twilioNumber} = body;
     if (!messageText) return;
-    
     const customerPhone = customerPhoneRaw.replace('whatsapp:', '');
     const cleanTwilioNumber = twilioNumber.replace('whatsapp:+', '').trim();
     
     console.log("Numero Limpio:",typeof(cleanTwilioNumber));
-
-    const apiConfig = await prisma.apiConfig.findFirst({
-        where: {
-            whatsappPhoneId: cleanTwilioNumber
-        },
-        include: {tenant: true}
-    });
+    console.log(prisma.apiConfig.findFirst({where: { whatsappPhoneId: cleanTwilioNumber }}));
+    const apiConfig = await prisma.apiConfig.findFirst({ where: {whatsappPhoneId: cleanTwilioNumber}, include: {tenant: true}});
     
     if(!apiConfig || !apiConfig.tenant) return;
     const tenantId = apiConfig.tenantId;

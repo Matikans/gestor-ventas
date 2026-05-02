@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors'
 import authRoutes from "./routes/authRoutes.js";
@@ -24,5 +25,6 @@ app.use('/api/business', businessRoutes)
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
+  console.log("Link Data:", process.env.DATABASE_URL);
   console.log(`Estamos escuchando en el puerto ${PORT}`);
 });
