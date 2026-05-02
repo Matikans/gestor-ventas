@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "npm install && npx prisma generate",
     "start": "node src/server.js"
   },
