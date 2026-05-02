@@ -1,5 +1,4 @@
-import dotenv from "dotenv";
-dotenv.config();
+import "dotenv/config";
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -13,6 +12,6 @@ const adapter = new PrismaPg({pool});
 
 const prisma = new PrismaClient({ adapter });
 
-console.log("Conexión establecida", prisma);
+console.log("Conexión establecida");
 
 export default prisma;
