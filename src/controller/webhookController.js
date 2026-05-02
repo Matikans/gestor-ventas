@@ -9,7 +9,6 @@ export const verifyWebhook = (req, res) => {
     res.status(200).send('twilio webhook verified');
 }
 export const receiveMessage = (req, res) => {
-    res.status(200).send('<Response></Response>'); // Respuesta inmediata a Twilio para evitar reintentos
     processAiLogic(req.body).catch(error => {
         console.error('Error en el Webhook:', error.message);
         if (!res.headersSent) {
@@ -148,5 +147,6 @@ const processAiLogic = async (body) => {
         to: customerPhoneRaw,
         body: finalMessage,
     });
+    res.status(200).send('<Response></Response>');
     console.log("Mensaje enviado al cliente:", finalMessage);
 }
