@@ -24,6 +24,17 @@ app.use('/auth', authRoutes);
 app.use('/api/business', businessRoutes)
 
 const PORT = process.env.PORT || 8000;
+
+// Escuchar señales de apagado
+process.on('SIGINT', async () => {
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  await prisma.$disconnect();
+  process.exit(0);
+});
 app.listen(PORT, () => {
   console.log("Link Data:", process.env.DATABASE_URL);
   console.log(`Estamos escuchando en el puerto ${PORT}`);
