@@ -1,4 +1,4 @@
-import {prisma } from "../utils/prisma.js";
+import prisma from "../utils/prisma.js";
 import { getStoreContext, generateAIResponse } from "../services/aiService.js";
 import twilio from "twilio";
 import { CheckoutService } from "../services/checkoutService.js";
@@ -59,7 +59,7 @@ const processAiLogic = async (body) => {
     let historyArray = [];
     try {
         historyArray = typeof session.chatHistory === 'string' 
-            ? JSON.parse(session.chatHistory || "[]") 
+            ? session.chatHistory || "[]"
             : (session.chatHistory || []);
     } catch (e) {
         console.error("Error parseando historial:", e);
