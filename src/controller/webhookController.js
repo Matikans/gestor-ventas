@@ -33,7 +33,7 @@ const processAiLogic = async (body) => {
         include: {tenant: true}
     });*/
     const apiConfig = await prisma.apiConfig.findFirst({
-        where: {whatsappPhoneId: 14155238886},
+        where: {whatsappPhoneId: "14155238886"},
         include: {tenant: true}
     });
     
