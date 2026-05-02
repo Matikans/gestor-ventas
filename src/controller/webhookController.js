@@ -22,7 +22,7 @@ export const receiveMessage = async (req, res) => {
         const customerPhone = customerPhoneRaw.replace('whatsapp:', '');
         const cleanTwilioNumber = twilioNumber.replace('whatsapp:+', '').trim();
         
-        const apiConfig = await prisma.apiConfig.findFirst({ 
+        const apiConfig = await prisma.apiConfig.findFirstOrThrow({ 
             where: { whatsappPhoneId: cleanTwilioNumber || null },
             include: { tenant: true } // Aseguramos traer los datos del tenant
         });
