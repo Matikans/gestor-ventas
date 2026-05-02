@@ -12,7 +12,7 @@ export const receiveMessage = async (req, res) => {
     try {
 
         const {Body: messageText, From:customerPhoneRaw, To:twilioNumber} = req.body;
-        if (!messageText) return;
+        if (!messageText) return; 
         const customerPhone = customerPhoneRaw.replace('whatsapp:', '');
         const cleanTwilioNumber = twilioNumber.replace('whatsapp:+', '').trim();
         
