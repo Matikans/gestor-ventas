@@ -21,7 +21,7 @@ export class MercadoPagoProvider {
                     quantity: items.quantity,
                     unit_price: items.unit_price,
                 })),
-                marketplace_fee: fee,
+                //marketplace_fee: fee,
                 external_reference: request.orderId,
                 back_urls: {
                     success: `https://sites.google.com/view/quefantasma/inicio?fbclid=IwY2xjawQ70rBleHRuA2FlbQIxMABicmlkETE0bDNlaGwwWXIzVDNxMWZXc3J0YwZhcHBfaWQPNTE0NzcxNTY5MjI4MDYxAAEezsVT4QjAAHL-usX-ZRVpIIrt1arg39ViBRXYfkSbib0Uf2veandYcDjEuE0_aem_hHUNjL1A9N7A2arPweV1gQ`,
