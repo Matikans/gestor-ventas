@@ -8,11 +8,8 @@ import { validateAddress } from "../services/locationService.js";
 export const verifyWebhook = (req, res) => {
     res.status(200).send('twilio webhook verified');
 }
-const xd = await prisma.all()
 export const receiveMessage = async(req, res) => {
     res.status(200).send('<Response></Response>'); // Respuesta inmediata a Twilio para evitar reintentos
-
-    console.log("XD:", xd);
     processAiLogic(req.body).catch(error => {
         console.error('Error en el Webhook:', error.message);
         if (!res.headersSent) {
