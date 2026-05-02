@@ -22,6 +22,7 @@ app.use('/', paymentRoutes);
 app.use('/auth', authRoutes);
 app.use('/api/business', businessRoutes)
 
-app.listen(3000, () => {
-  console.log('Estamos escuchando en el puerto 3000');
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () => {
+  console.log(`Estamos escuchando en el puerto ${PORT}`);
 });
