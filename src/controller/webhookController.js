@@ -5,24 +5,33 @@ import { CheckoutService } from "../services/checkoutService.js";
 import { getBusinessStatus } from "../services/schedulerService.js";
 import { validateAddress } from "../services/locationService.js";
 
+// Helper para responder a Twilio rápido y evitar timeouts
+const endTwilioRequest = (res) => res.status(200).send('<Response></Response>');
+
 export const verifyWebhook = (req, res) => {
     res.status(200).send('twilio webhook verified');
 }
+
 export const receiveMessage = async (req, res) => {
     try {
-
-        const {Body: messageText, From:customerPhoneRaw, To:twilioNumber} = req.body;
-        if (!messageText) return; 
+        const { Body: messageText, From: customerPhoneRaw, To: twilioNumber } = req.body;
+        
+        // Corrección 1: Si no hay texto, cerramos la petición correctamente
+        if (!messageText) return endTwilioRequest(res); 
+        
         const customerPhone = customerPhoneRaw.replace('whatsapp:', '');
         const cleanTwilioNumber = twilioNumber.replace('whatsapp:+', '').trim();
         
-        console.log("Numero Limpio:",typeof(cleanTwilioNumber));
-        const apiConfig = await prisma.apiConfig.findFirst({ where: {whatsappPhoneId: cleanTwilioNumber || null}});
-        console.log("API Config encontrada:", apiConfig);
+        const apiConfig = await prisma.apiConfig.findFirst({ 
+            where: { whatsappPhoneId: cleanTwilioNumber || null },
+            include: { tenant: true } // Aseguramos traer los datos del tenant
+        });
         
-        if(!apiConfig || !apiConfig.tenant) return;
+        // Corrección 2: Cerrar petición si no es un cliente válido
+        if(!apiConfig || !apiConfig.tenant) return endTwilioRequest(res);
+        
         const tenantId = apiConfig.tenantId;
-        const tenantAddress = apiConfig.tenant.address || "Direccion no disponible";
+        const tenantAddress = apiConfig.tenant.address || "Dirección no disponible";
         const client = twilio(process.env.TWILIO_ACCOUNT_SID, apiConfig.whatsappToken);
         
         const status = await getBusinessStatus(tenantId);
@@ -31,32 +40,31 @@ export const receiveMessage = async (req, res) => {
                 body:`¡Hola! 👋 Gracias por escribir a ${apiConfig.tenant.businessName}. En este momento estamos cerrados. ${status.message}.`,
                 from: twilioNumber, to: customerPhoneRaw
             });
-            return;
+            // Corrección 3: Avisar a Twilio que ya procesamos este mensaje
+            return endTwilioRequest(res);
         }
         
-        // 1. Buscamos o creamos la sesión (upsert nos devuelve el objeto actualizado)
         let session = await prisma.session.upsert({
             where: { customerPhone_tenantId: {customerPhone, tenantId} },
             update: { lastInteraction: new Date() },
             create: { customerPhone, tenantId, currentState: "CHAT" }
         });
         
-        // Parseamos el historial una sola vez al inicio
         let historyArray = [];
         try {
             historyArray = typeof session.chatHistory === 'string' 
-                ? session.chatHistory || "[]"
+                ? JSON.parse(session.chatHistory || "[]") // Si alguna vez se guardó como string
                 : (session.chatHistory || []);
         } catch (e) {
             console.error("Error parseando historial:", e);
         }
         
-        console.log("Historial actual:", historyArray);
-        
         let finalMessage = "";
-        // 2. LÓGICA DE ESTADOS
+        
+        // ESTADO: ESPERANDO DIRECCIÓN
         if(session.currentState === "AWAITING_ADDRESS") {
             const addressCheck = await validateAddress(messageText);
+            
             if(!addressCheck.isValid) {
                 finalMessage = `Ups, no encuentro esa dirección en Córdoba: ${addressCheck.error}. ¿Me la pasás de nuevo?`;
             } else {
@@ -78,13 +86,13 @@ export const receiveMessage = async (req, res) => {
                 });
             }
         }
+        // ESTADO: CHAT NORMAL
         else {
             const productsContext = await getStoreContext(tenantId);
             const aiReplay = await generateAIResponse(messageText, productsContext, apiConfig.tenant.businessName, tenantAddress, historyArray);
             
             finalMessage = aiReplay.reply || "Disculpame, che, se me trabó la neurona un segundo.";
         
-            // 2. LÓGICA DE COMPRA
             if(aiReplay.intent === 'PURCHASE' && aiReplay.items?.length > 0) {
                 try {
                     const { items, total } = await CheckoutService.prepareOrderFromAI(tenantId, aiReplay.items);
@@ -117,7 +125,7 @@ export const receiveMessage = async (req, res) => {
             }
         }
         
-        // 3. ACTUALIZAR HISTORIAL UNIVERSAL
+        // ACTUALIZAR HISTORIAL UNIVERSAL
         try {
             const userMsg = String(messageText || "").trim();
             const aiMsg = String(finalMessage || "").trim();
@@ -125,26 +133,29 @@ export const receiveMessage = async (req, res) => {
                 ...historyArray, 
                 { role: 'user', content: userMsg }, 
                 { role: 'assistant', content: aiMsg }
-            ].slice(-10);
+            ].slice(-10); // Mantenemos los últimos 10 mensajes para no reventar el límite de tokens de OpenAI/Gemini
         
             await prisma.session.update({
                 where: { customerPhone_tenantId: { customerPhone, tenantId } },
-                data: { chatHistory: JSON(newHistoryStep) }
+                // Corrección 4: Pasamos el array directamente si el campo es Json
+                data: { chatHistory: newHistoryStep } 
             });
         } catch (historyErr) {
             console.error("❌ Error actualizando historial:", historyErr.message);
         }
         
-        // 3. ENVIAR MENSAJE FINAL
+        // ENVIAR MENSAJE FINAL
         await client.messages.create({
             from: twilioNumber,
             to: customerPhoneRaw,
             body: finalMessage,
         });
-        console.log("Mensaje enviado al cliente:", finalMessage);
-        res.status(200).send('<Response></Response>');
-    }catch (error) {
+        
+        endTwilioRequest(res);
+
+    } catch (error) {
         console.error("Error en receiveMessage:", error);
-        res.status(500).send('Error processing the message');
+        // Evitamos enviar error 500 para que Twilio no reintente enviar el mismo mensaje defectuoso
+        endTwilioRequest(res); 
     }
 }
