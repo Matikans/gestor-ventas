@@ -25,6 +25,6 @@ app.use('/api/business', businessRoutes)
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
-  console.log("Link Data:", process.env.DATABASE_URL);
+  console.log("Link Data:", process.env.DIRECT_URL);
   console.log(`Estamos escuchando en el puerto ${PORT}`);
 });
