@@ -10,7 +10,6 @@ export const verifyWebhook = (req, res) => {
 }
 
 export const receiveMessage = async(req, res) => {
-    console.log("D:", req.body);
     res.status(200).send('<Response></Response>'); // Respuesta inmediata a Twilio para evitar reintentos
 
     processAiLogic(req.body).catch(error => {
@@ -34,7 +33,7 @@ const processAiLogic = async (body) => {
         include: {tenant: true}
     });*/
     const apiConfig = await prisma.apiConfig.findFirst({
-        where: {whatsappPhoneId:cleanTwilioNumber},
+        where: {whatsappPhoneId: 14155238886},
         include: {tenant: true}
     });
     
