@@ -20,6 +20,8 @@ model Tenant {
   email             String?        @unique
   nextBillingDate   DateTime?
   suscriptionStatus String         @default("ACTIVE")
+
+  
   apiConfig         ApiConfig?
   businessHours     BusinessHour[]
   combos            Combo[]

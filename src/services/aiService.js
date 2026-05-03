@@ -34,6 +34,8 @@ export const getStoreContext = async (tenantId) =>{
         `- COMBO ${p.name} (ID: ${p.id}): $${p.discountValue} (¡Oferta especial!)`
 
     ).join('\n');
+    console.log("Combos:", promos);
+    console.log("Productos:", products);
 
 
     return `ESTE ES EL MENÚ COMPLETO:
