@@ -8,6 +8,7 @@ import promoRoutes from "./routes/promoRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import businessRoutes from "./routes/businessRoutes.js";
 import webRoutes from "./routes/webRoutes.js";
+import prisma from "./utils/prisma.js";
 
 const app = express();
 

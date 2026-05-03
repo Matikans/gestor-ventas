@@ -8,7 +8,6 @@ export class CheckoutService {
         const validatedItems = [];
         let total = 0;
 
-        console.log("Vamo a ve:", tenantId);
         for (const item of aiItems) {
             let dbItem = await prisma.product.findUnique({ where: { id: item.id, tenantId } });
             if (!dbItem) {
@@ -70,7 +69,7 @@ export class CheckoutService {
         const deliveryFee = Number(tenant.deliveryPrice) || 0;
             
         const sanitizedItems = cart.items.map(item => ({
-                title: item.name || "Product",
+                title: item.name + " - " + tenant.businessName || "Product" + " - " + tenant.businessName,
                 quantity: Number(item.quantity),
                 unit_price: Number(item.unit_price),
                 currency_id: "ARS"
@@ -109,13 +108,17 @@ export class CheckoutService {
 
         const paymentProvider = PaymentFactory.create("mercadopago", config.paymentPrivateKey);
 
+        console.log("paymentProvider: ", paymentProvider)
+
         const paymentLink = await paymentProvider.createLink({
             orderId: order.id,
             items: sanitizedItems,
             tenantId: tenantId,
             tenantName: config.tenant.businessName,
-            marketplaceFee: commission
+            //marketplaceFee: commission
         })
+
+        console.log("Payment Link: ", paymentLink);
 
         await prisma.session.update({
             where: { customerPhone_tenantId: { customerPhone, tenantId } },

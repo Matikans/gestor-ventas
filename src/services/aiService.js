@@ -11,14 +11,11 @@ const model = genAI.getGenerativeModel({model: "gemini-flash-latest", generation
 export const getStoreContext = async (tenantId) =>{
 
     const products = await prisma.product.findMany({
-
         where: {tenantId, isActive: true }
-
     });
     const promos = await prisma.combo.findMany({
-
-        where: {tenantId, isActive: true }
-
+        where: {tenantId, isActive: true },
+        include: { items: { include: { product: true } } }
     });
 
 
@@ -30,13 +27,8 @@ export const getStoreContext = async (tenantId) =>{
 
 
     const promoList = promos.map(p =>
-
-        `- COMBO ${p.name} (ID: ${p.id}): $${p.discountValue} (¡Oferta especial!)`
-
+        `- COMBO ${p.name} (ID: ${p.id}): $${p.discountValue} ${p.items?.map((item) => item.product.name).join(', ') || ''} (¡Oferta especial!)`
     ).join('\n');
-    console.log("Combos:", promos);
-    console.log("Productos:", products);
-
 
     return `ESTE ES EL MENÚ COMPLETO:
 
@@ -56,7 +48,6 @@ ${promoList}`;
 
 
 export const generateAIResponse = async (userMessage, productsContext, businessName, tenantAddress, history = []) => {
-    console.log("Generando respuesta de IA con el siguiente modelo:", model);
     let historyArray = [];
     try {
         if (typeof history === 'string') {

@@ -51,6 +51,9 @@ export class MercadoPagoProvider {
                         Authorization: `Bearer ${this.accessToken}`,
                     },
                 });
+                if (!response.ok) {
+                    throw new Error(`Error consultando pago: ${response.statusText}`);
+                }
                 const paymentInfo = await response.json();
     
                 if (paymentInfo.status === 'approved') {
